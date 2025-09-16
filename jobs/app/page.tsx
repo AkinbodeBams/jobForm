@@ -1,373 +1,516 @@
 "use client";
-import React, { useState } from "react";
-import CustomDatePicker from "./components/CustomDatePicker";
-import { setDateFromString } from "./util";
+import React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-type FormState = {
-  fullName: string;
-  email: string;
-  phone: string;
-  dob: string;
-  location: string;
-  device: "smartphone" | "desktop" | "";
-  internet: "high" | "medium" | "low" | "";
-  availability: string;
-  experience: string;
-  agreeConfidential: boolean;
-  resumeBase64?: string; // optional, client will send base64
-};
-
-export default function Home() {
-  const [form, setForm] = useState<FormState>({
-    fullName: "",
-    email: "",
-    phone: "",
-    dob: "",
-    location: "",
-    device: "",
-    internet: "",
-    availability: "",
-    experience: "",
-    agreeConfidential: false,
-  });
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const handleDateChange = (date: Date | null, name: string) => {
-    if (!date) return;
-    // if (new Date(date) > new Date()) {
-    //   setShowAlert("date cannot be in the future", "red");
-    //   return;
-    // }
-
-    setForm({
-      ...form,
-      [name]: date,
-    });
-  };
-
-  function validate(): boolean {
-    const e: Record<string, string> = {};
-    if (!form.fullName.trim()) e.fullName = "Full name is required.";
-    if (!form.email.match(/^\S+@\S+\.\S+$/))
-      e.email = "Valid email is required.";
-    if (!form.dob || Number(form.dob) < 18)
-      e.dob = "You must be at least 18 years old.";
-    if (!form.device) e.device = "Please select the device you will use.";
-    if (!form.internet)
-      e.internet = "Please select your internet connection quality.";
-    if (!form.agreeConfidential)
-      e.agreeConfidential =
-        "You must agree to confidentiality and research guidelines.";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  }
-
-  async function handleFile(file: File | null) {
-    if (!file) return;
-    // convert to base64 so API can accept without multipart libs
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    return new Promise<string>((res, rej) => {
-      reader.onload = () => {
-        if (typeof reader.result === "string") res(reader.result);
-        else rej(new Error("Failed to read file"));
-      };
-      reader.onerror = () => rej(new Error("File read error"));
-    });
-  }
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setMessage(null);
-    if (!validate()) return;
-    setSubmitting(true);
-    try {
-      // Prepare payload
-      const payload: any = { ...form };
-      // send resume if present (already base64)
-      // If user attached a file, it should have been converted before
-
-      const resp = await fetch("/api/apply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await resp.json();
-      if (resp.ok) {
-        setMessage("Application submitted successfully — thank you!");
-        setForm({
-          fullName: "",
-          email: "",
-          phone: "",
-          dob: "",
-          location: "",
-          device: "",
-          internet: "",
-          availability: "",
-          experience: "",
-          agreeConfidential: false,
-        });
-        setErrors({});
-      } else {
-        setMessage(data?.error || "Submission failed");
-      }
-    } catch (err: any) {
-      setMessage(err?.message || "Unexpected error");
-    } finally {
-      setSubmitting(false);
-    }
-  }
+const HomePage = () => {
+  const router = useRouter();
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 relative overflow-hidden">
       {/* Vector Design Elements */}
       <div className="absolute top-0 right-0 w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
       <div className="absolute top-0 left-20 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
       <div className="absolute bottom-0 left-20 w-80 h-80 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
 
-      {/* Geometric shapes */}
-      <div className="absolute top-1/4 right-1/4">
-        <svg
-          width="100"
-          height="100"
-          viewBox="0 0 100 100"
-          className="opacity-10"
-        >
-          <polygon points="50,0 100,50 50,100 0,50" fill="#4F46E5" />
-        </svg>
-      </div>
-      <div className="absolute bottom-1/3 left-10">
-        <svg width="80" height="80" viewBox="0 0 80 80" className="opacity-10">
-          <circle cx="40" cy="40" r="35" fill="#6366F1" />
-        </svg>
-      </div>
-
-      <div className="max-w-3xl mx-auto p-6 relative z-10">
-        <h1 className="text-3xl font-semibold mb-2 text-gray-800">
-          Apply: Part-Time Panelist & Data Entry Clerk
-        </h1>
-        <p className="text-sm text-gray-600 mb-6">
-          ApexFocusGroup — Flexible, remote & in-person market research
-          opportunities
-        </p>
-
-        <form
-          onSubmit={onSubmit}
-          className="space-y-4 bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-white/50 text-gray-600"
-        >
-          <div>
-            <label className="block text-sm font-medium">Full name</label>
-            <input
-              value={form.fullName}
-              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Jane Doe"
-            />
-            {errors.fullName && (
-              <p className="text-red-600 text-sm">{errors.fullName}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium">Email</label>
-              <input
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="you@example.com"
-              />
-              {errors.email && (
-                <p className="text-red-600 text-sm">{errors.email}</p>
-              )}
+      {/* Navigation */}
+      <nav className="relative z-20 py-4 px-6">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <div className="flex items-center">
+            <div className="w-10 h-10 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold mr-2">
+              A
             </div>
-
-            <div>
-              <label className="block text-sm font-medium">Phone</label>
-              <input
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder=""
-              />
-            </div>
+            <span className="text-xl font-semibold text-gray-800">
+              ApexFocusGroup
+            </span>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium">Date of Birth</label>
-              <CustomDatePicker
-                name="dob"
-                value={form.dob}
-                onChange={handleDateChange}
-              />
-
-              {errors.age && (
-                <p className="text-red-600 text-sm">{errors.age}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">Location</label>
-              <input
-                value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="City, State"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">
-                Availability (hrs / week)
-              </label>
-              <input
-                value={form.availability}
-                onChange={(e) =>
-                  setForm({ ...form, availability: e.target.value })
-                }
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="e.g. 5-10"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium">
-                Device (required)
-              </label>
-              <select
-                value={form.device}
-                onChange={(e) =>
-                  setForm({ ...form, device: e.target.value as any })
-                }
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select device</option>
-                <option value="smartphone">Smartphone with camera</option>
-                <option value="desktop">Desktop / Laptop with webcam</option>
-              </select>
-              {errors.device && (
-                <p className="text-red-600 text-sm">{errors.device}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium">
-                Internet connection
-              </label>
-              <select
-                value={form.internet}
-                onChange={(e) =>
-                  setForm({ ...form, internet: e.target.value as any })
-                }
-                className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">Select</option>
-                <option value="high">High-speed</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low / unreliable</option>
-              </select>
-              {errors.internet && (
-                <p className="text-red-600 text-sm">{errors.internet}</p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">
-              Tell us briefly about any relevant experience (surveys, focus
-              groups, data entry) — optional
-            </label>
-            <textarea
-              value={form.experience}
-              onChange={(e) => setForm({ ...form, experience: e.target.value })}
-              className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              rows={4}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium">
-              Attach resume / CV (optional)
-            </label>
-            <input
-              type="file"
-              accept="application/pdf,application/msword,.doc,.docx"
-              onChange={async (e) => {
-                const f = e.target.files?.[0] ?? null;
-                if (!f) return;
-                try {
-                  const b64 = await handleFile(f);
-                  setForm((prev) => ({ ...prev, resumeBase64: b64 }));
-                } catch (err) {
-                  console.error(err);
-                }
-              }}
-              className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              We accept PDF/DOC. Files are encoded client-side before sending.
-            </p>
-          </div>
-
-          <div className="flex items-start space-x-3">
-            <input
-              id="agree"
-              type="checkbox"
-              checked={form.agreeConfidential}
-              onChange={(e) =>
-                setForm({ ...form, agreeConfidential: e.target.checked })
-              }
-              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-            />
-            <label htmlFor="agree" className="text-sm">
-              I agree to maintain confidentiality and follow research
-              guidelines. (required)
-            </label>
-          </div>
-          {errors.agreeConfidential && (
-            <p className="text-red-600 text-sm">{errors.agreeConfidential}</p>
-          )}
-
-          <div className="flex items-center justify-between">
-            <button
-              disabled={submitting}
-              type="submit"
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white disabled:opacity-50 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md hover:shadow-lg"
+          <div className="hidden md:flex space-x-6">
+            <a
+              href="#header"
+              className="text-gray-700 hover:text-indigo-600 transition-colors"
             >
-              {submitting ? "Submitting..." : "Submit Application"}
+              Home
+            </a>
+            <a
+              href="#about"
+              className="text-gray-700 hover:text-indigo-600 transition-colors"
+            >
+              About
+            </a>
+            <a
+              href="#services"
+              className="text-gray-700 hover:text-indigo-600 transition-colors"
+            >
+              Services
+            </a>
+            <a
+              href="/clinical-trial"
+              className="text-gray-700 hover:text-indigo-600 transition-colors"
+              target="_blank"
+            >
+              Clinical Trials
+            </a>
+            <a
+              href="/focus-groups"
+              className="text-gray-700 hover:text-indigo-600 transition-colors"
+            >
+              Focus Groups
+            </a>
+            <a
+              href="#contact"
+              className="text-gray-700 hover:text-indigo-600 transition-colors"
+            >
+              Contact
+            </a>
+          </div>
+          <button
+            onClick={() => router.push("/join")}
+            className="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md"
+          >
+            Join A Focus Group
+          </button>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <header id="header" className="relative z-10 py-16 md:py-24 px-6">
+        <div className="max-w-6xl mx-auto text-center">
+          <h1 className="text-4xl md:text-6xl font-bold text-gray-800 mb-6">
+            Get Paid For Your Opinion
+          </h1>
+          <p className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto">
+            We help you find paid focus groups near you. Our team gathers focus
+            groups from around the web and works directly with some of the top
+            market research firms to bring you legitimate paid focus group
+            opportunities.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button
+              onClick={() => router.push("/join")}
+              className="px-8 py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl text-lg font-medium"
+            >
+              Join Us Now
             </button>
-            <p className="text-sm text-gray-500">
-              You may earn up to $750/week depending on sessions.
+            <button
+              onClick={() => {
+                const element = document.getElementById("about");
+                element?.scrollIntoView({ behavior: "smooth" });
+              }}
+              className="px-8 py-4 rounded-xl bg-white text-indigo-600 border border-indigo-200 hover:bg-indigo-50 transition-all text-lg font-medium"
+            >
+              Learn More
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* About Section */}
+      <section id="about" className="relative z-10 py-16 px-6 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
+              What We Do?
+            </h2>
+            <p className="text-lg text-gray-600 max-w-4xl mx-auto">
+              Use your knowledge and expertise in your field to influence
+              decision makers on products and services that matter. With
+              everything from consumer packaged goods to medical and healthcare
+              advancements, we offer a wide range of market research groups that
+              fit your interests, background, lifestyle and location. Come join
+              us, and receive compensation for making your voice heard.
             </p>
           </div>
+          <div className="text-center">
+            <button
+              onClick={() => router.push("/join")}
+              className="px-8 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md text-lg font-medium"
+            >
+              Join Us Now
+            </button>
+          </div>
+        </div>
+      </section>
 
-          {message && (
-            <div className="rounded-md border p-3 mt-2 bg-blue-50 border-blue-200 text-blue-700">
-              {message}
+      {/* Services Section */}
+      <section id="services" className="relative z-10 py-16 px-6 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
+              Our Market Research Services
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Focus Groups */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg border border-white/50 text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                  ></path>
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Focus Groups
+              </h3>
+              <h4 className="text-blue-600 font-medium mb-3">
+                Receive compensation for your voice
+              </h4>
+              <p className="text-gray-600">
+                We have over 1,000 legitimate focus group opportunities and
+                worked with virtually every market research firm in the US.
+              </p>
             </div>
-          )}
-        </form>
 
-        <section className="mt-6 text-sm text-gray-700 bg-white/80 backdrop-blur-sm p-4 rounded-md border border-white/50 shadow">
-          <h3 className="font-semibold">What happens next?</h3>
-          <ol className="list-decimal list-inside mt-2 space-y-1">
-            <li>We receive your application and review basic eligibility.</li>
-            <li>
-              If selected, you'll receive an email with session invites and
-              instructions.
-            </li>
-            <li>
-              For paid sessions, payments are processed after participation
-              according to the study terms.
-            </li>
-          </ol>
-        </section>
-      </div>
+            {/* Clinical Trials */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg border border-white/50 text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                  ></path>
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Clinical Trials
+              </h3>
+              <h4 className="text-blue-600 font-medium mb-3">
+                Get access to experimental treatment
+              </h4>
+              <p className="text-gray-600">
+                We help connect people with clinical research studies that offer
+                treatments under development.
+              </p>
+            </div>
+
+            {/* Paid Surveys */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg border border-white/50 text-center">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg
+                  className="w-8 h-8 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  ></path>
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Paid Survey Panels
+              </h3>
+              <h4 className="text-blue-600 font-medium mb-3">
+                Help companies improve their products
+              </h4>
+              <p className="text-gray-600">
+                Tell us what you think about the products you use every day or
+                even try new ones before they hit store shelves!
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Subscribe Section */}
+      <section className="relative z-10 py-16 px-6 bg-indigo-900 text-white text-center">
+        <div className="max-w-3xl mx-auto">
+          <div className="w-16 h-16 bg-indigo-800 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg
+              className="w-8 h-8 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              ></path>
+            </svg>
+          </div>
+
+          <h2 className="text-2xl md:text-3xl font-bold mb-4">Subscribe Now</h2>
+          <p className="text-indigo-200 mb-8 max-w-2xl mx-auto">
+            Stay up-to-date and receive our latest news and press, sent straight
+            to your email.
+          </p>
+
+          <form className="flex flex-col sm:flex-row gap-2 max-w-md mx-auto">
+            <input
+              type="email"
+              placeholder="Enter your email address"
+              className="flex-grow px-4 py-3 rounded-lg bg-indigo-800 text-white placeholder-indigo-300 border border-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
+            <button
+              type="submit"
+              className="px-6 py-3 bg-white text-indigo-700 font-medium rounded-lg hover:bg-indigo-50 transition-colors"
+            >
+              Subscribe
+            </button>
+          </form>
+        </div>
+      </section>
+
+      {/* Testimonial Section */}
+      <section className="relative z-10 py-16 px-6 bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="md:w-2/5">
+              <div className="rounded-2xl overflow-hidden shadow-lg">
+                <img
+                  src="https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=654&q=80"
+                  alt="Rick Sullivan"
+                  className="w-full h-auto"
+                />
+              </div>
+            </div>
+
+            <div className="md:w-3/5">
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-800 mb-2">
+                What Our Member Says
+              </h2>
+              <p className="text-blue-600 font-medium mb-6">
+                Rick Sullivan, 26 (Austin, TX)
+              </p>
+              <p className="text-gray-600 text-lg italic mb-6">
+                "Apex Focus Group has always been our go-to resource for making
+                some extra income. I really feel like my opinion matters and I
+                love taking part in focus groups and surveys. Thank you!"
+              </p>
+              <div className="flex items-center">
+                <div className="flex space-x-1 text-yellow-400">
+                  {[...Array(5)].map((_, i) => (
+                    <svg
+                      key={i}
+                      className="w-5 h-5 fill-current"
+                      viewBox="0 0 20 20"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+                <span className="ml-2 text-gray-600">5.0 Rating</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="relative z-10 py-16 px-6 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div>
+              <div className="text-4xl md:text-5xl font-bold text-indigo-600 mb-2">
+                1000+
+              </div>
+              <div className="text-gray-700 font-medium">
+                Market Research Opportunities
+              </div>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-bold text-indigo-600 mb-2">
+                824
+              </div>
+              <div className="text-gray-700 font-medium">
+                Active Participants
+              </div>
+            </div>
+            <div>
+              <div className="text-4xl md:text-5xl font-bold text-indigo-600 mb-2">
+                41
+              </div>
+              <div className="text-gray-700 font-medium">States</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="relative z-10 py-16 px-6 bg-indigo-800 text-white text-center">
+        <div className="max-w-4xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold mb-6">
+            Join Our Panel and Get Paid For Your Opinions
+          </h2>
+          <button
+            onClick={() => router.push("/join")}
+            className="px-8 py-4 rounded-xl bg-white text-indigo-700 hover:bg-indigo-50 transition-all shadow-lg hover:shadow-xl text-lg font-medium"
+          >
+            Go Here To Get Started
+          </button>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer
+        id="contact"
+        className="relative z-10 py-12 px-6 bg-gray-900 text-gray-300"
+      >
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-bold mr-2">
+                  A
+                </div>
+                <span className="text-xl font-semibold text-white">
+                  ApexFocusGroup
+                </span>
+              </div>
+              <p className="text-gray-400">
+                Connecting voices to shape better products and services through
+                market research.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Quick Links
+              </h3>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    Home
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#about"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    About
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#services"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    Services
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/focus-groups"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    Focus Groups
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Support</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    FAQ
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    Contact Us
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/privacy"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    Privacy Policy
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/terms"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    Terms of Service
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">
+                Contact Info
+              </h3>
+              <ul className="space-y-2">
+                <li className="flex items-start">
+                  <svg
+                    className="w-5 h-5 text-gray-400 mr-2 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                    ></path>
+                  </svg>
+                  <span>contact@apexfocusgroup.com</span>
+                </li>
+                <li className="flex items-start">
+                  <svg
+                    className="w-5 h-5 text-gray-400 mr-2 mt-0.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                    ></path>
+                  </svg>
+                  <span>(555) 123-4567</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
+            <p>© All Right Reserved 2025 - ApexFocusGroup.com</p>
+          </div>
+        </div>
+      </footer>
 
       <style jsx>{`
         @keyframes blob {
@@ -394,6 +537,8 @@ export default function Home() {
           animation-delay: 4s;
         }
       `}</style>
-    </main>
+    </div>
   );
-}
+};
+
+export default HomePage;
