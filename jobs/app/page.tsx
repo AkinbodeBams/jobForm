@@ -298,9 +298,10 @@ const HomePage = () => {
                 Rick Sullivan, 26 (Austin, TX)
               </p>
               <p className="text-gray-600 text-lg italic mb-6">
-                "Apex Focus Group has always been our go-to resource for making
-                some extra income. I really feel like my opinion matters and I
-                love taking part in focus groups and surveys. Thank you!"
+                &quot;Apex Focus Group has always been our go-to resource for
+                making some extra income. I really feel like my opinion matters
+                and I love taking part in focus groups and surveys. Thank
+                you!&quot;
               </p>
               <div className="flex items-center">
                 <div className="flex space-x-1 text-yellow-400">
